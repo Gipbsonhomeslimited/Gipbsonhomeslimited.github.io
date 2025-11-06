@@ -1,0 +1,46 @@
+name: Unzip and deploy site
+on:
+  push:
+    paths:
+      - 'Gipbson_Homes_Website.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Ensure unzip is available
+        run: sudo apt-get update && sudo apt-get install -y unzip
+
+      - name: Unzip archive into repo root
+        run: |
+          # Overwrite files if present
+          unzip -o Gipbson_Homes_Website.zip -d .
+          # If extracted into subfolder, move contents up (adjust if needed)
+          if [ -d "Gipbson_Homes_Website" ]; then
+            shopt -s dotglob || true
+            mv Gipbson_Homes_Website/* .
+            mv Gipbson_Homes_Website/.* . 2>/dev/null || true
+            rmdir Gipbson_Homes_Website || true
+          fi
+
+      - name: Remove zip from repo (optional)
+        run: git rm --ignore-unmatch Gipbson_Homes_Website.zip || true
+
+      - name: Commit and push extracted files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Unzip Gipbson_Homes_Website.zip and deploy site" || echo "No changes to commit"
+          git push
